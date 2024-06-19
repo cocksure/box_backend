@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    #    command: gunicorn -b 0.0.0.0:8030 multisys.wsgi:application
+    command: python manage.py runserver 127.0.0.1:8001
+    volumes:
+      - .:/app
+    ports:
+      - "8030:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_DOCKER_HOST}
+
+
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+
+
+networks:
+  boxproduction_default:
+    driver: bridge

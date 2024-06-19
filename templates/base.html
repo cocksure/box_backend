@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  {% load static %}
+  {% load bootstrap5 %}
+  {% bootstrap_css %}
+  {% bootstrap_javascript %}
+
+
+</head>
+<body style="height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+ {% block content %}
+  {% endblock %}
+</div>
+</body>
+</html>
