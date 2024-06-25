@@ -21,19 +21,19 @@ INSTALLED_APPS = [
 	'django.contrib.messages',
 	'django.contrib.staticfiles',
 
-    #packages
-    'import_export',
-    'rest_framework',
-    'django_filters',
-    'rest_framework.authtoken',
-    'allauth',
-    'allauth.account',
-    'drf_yasg',
-    'dj_rest_auth',
-    'allauth.socialaccount',
-    'corsheaders',
-    'dj_rest_auth.registration',
-    'bootstrap5',
+	# packages
+	'import_export',
+	'rest_framework',
+	'django_filters',
+	'rest_framework.authtoken',
+	'allauth',
+	'allauth.account',
+	'drf_yasg',
+	'dj_rest_auth',
+	'allauth.socialaccount',
+	'corsheaders',
+	'dj_rest_auth.registration',
+	'bootstrap5',
 
 	# local apps
 	'apps.users',

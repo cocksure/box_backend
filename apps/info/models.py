@@ -1,15 +1,15 @@
 import uuid
-
 import transliterate
+from django.core.validators import FileExtensionValidator
 from django.utils.text import slugify
-
 from django.db import models
 
+from apps.depo.models.stock import Stock
 from apps.shared.models import BaseModel
 from apps.users.models import CustomUser
 
 
-class MaterialType(models.Model):
+class MaterialType(BaseModel):
 	name = models.CharField(max_length=100, verbose_name="Название")
 
 	def __str__(self):
@@ -29,17 +29,23 @@ class Material(BaseModel):
 		('litr', 'л'),
 	)
 
-	code = models.CharField(max_length=100, unique=True, verbose_name="Код", null=True, blank=True)
+	code = models.CharField(max_length=100, unique=True, null=True, blank=True, verbose_name="Код")
 	name = models.CharField(max_length=100, unique=True, verbose_name="Название")
 	material_group = models.ForeignKey('MaterialGroup', on_delete=models.CASCADE, verbose_name="Группа материала")
 	special_group = models.ForeignKey('MaterialSpecialGroup', on_delete=models.CASCADE,
 									  verbose_name="Специальная группа")
-	brand = models.ForeignKey('Brand', on_delete=models.CASCADE, verbose_name="Бренд")
+	brand = models.ForeignKey('Brand', on_delete=models.SET_NULL, null=True, verbose_name="Бренд")
 	material_type = models.ForeignKey(MaterialType, on_delete=models.CASCADE, max_length=100,
 									  verbose_name="Тип материала")
-	# material_thickness = models.FloatField(verbose_name="Толщина материала", null=True, blank=True)
+	material_thickness = models.FloatField(verbose_name="Плотность(Г/м2)", null=True, blank=True)
 	unit_of_measurement = models.CharField(max_length=10, choices=UNIT_CHOICES, default=None,
 										   verbose_name="Единица измерения")
+	photo = models.ImageField(
+		upload_to='box_photos',
+		default='box_photos/no-image.png',
+		validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])],
+		verbose_name="Изображение"
+	)
 
 	def __str__(self):
 		return self.name
@@ -67,6 +73,28 @@ class Warehouse(BaseModel):
 									   verbose_name="Использовать отрицательные значения")
 	is_active = models.BooleanField(default=True, null=True, blank=True, verbose_name="Активен")
 	managers = models.ManyToManyField(CustomUser, blank=True, verbose_name="Менеджеры")
+
+	# Другие поля модели
+
+	def has_enough_material(self, form_data, insufficient_materials=None):
+		if insufficient_materials is None:
+			insufficient_materials = []
+
+		for key, value in form_data.items():
+			if key.startswith('outgoing_material_'):
+				material_id = value
+				amount = form_data.get('outgoing_amount_' + key.split('_')[-1], 0)
+				try:
+					stock = Stock.objects.get(warehouse=self, material_id=material_id)
+					if stock.amount < int(amount):
+						insufficient_materials.append(
+							{'material': stock.material.name, 'available_amount': stock.amount})
+						return False
+				except Stock.DoesNotExist:
+					insufficient_materials.append(
+						{'material': Material.objects.get(id=material_id).name, 'available_amount': 0})
+					return False
+		return True, insufficient_materials
 
 	def __str__(self):
 		return self.name
@@ -118,8 +146,8 @@ class Specification(BaseModel):
 		verbose_name_plural = "Спецификации"
 
 
-class BoxSize(models.Model):
-	name = models.CharField(max_length=100, null=True, blank=True, verbose_name="Название")
+class BoxSize(BaseModel):
+	name = models.CharField(max_length=100, verbose_name="Название", null=True, blank=True)
 
 	width = models.PositiveIntegerField(verbose_name="Ширина")
 	height = models.PositiveIntegerField(verbose_name="Высота")
@@ -137,7 +165,7 @@ class BoxSize(models.Model):
 		verbose_name_plural = "Размеры коробок"
 
 
-class BoxType(models.Model):
+class BoxType(BaseModel):
 	name = models.CharField(max_length=100, verbose_name="Название")
 
 	def __str__(self):
@@ -148,7 +176,7 @@ class BoxType(models.Model):
 		verbose_name_plural = "Типы коробок"
 
 
-class MaterialGroup(models.Model):
+class MaterialGroup(BaseModel):
 	name = models.CharField(max_length=100, verbose_name="Название")
 
 	def __str__(self):
@@ -159,7 +187,7 @@ class MaterialGroup(models.Model):
 		verbose_name_plural = "Группы материалов"
 
 
-class MaterialSpecialGroup(models.Model):
+class MaterialSpecialGroup(BaseModel):
 	name = models.CharField(max_length=100, verbose_name="Название")
 
 	def __str__(self):
@@ -170,7 +198,7 @@ class MaterialSpecialGroup(models.Model):
 		verbose_name_plural = "Специальные группы материалов"
 
 
-class Brand(models.Model):
+class Brand(BaseModel):
 	name = models.CharField(max_length=100, verbose_name="Название")
 
 	def __str__(self):

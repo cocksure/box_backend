@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
-from .models import Process, BoxModel, BoxOrder, BoxOrderDetail, ProductionOrder, UploadImage
+from .models import Process, BoxModel, BoxOrder, BoxOrderDetail, ProductionOrder, UploadImage, TypeWork, ProcessLog
+from ..depo.admin import OutgoingMaterialInline
 
 
 @admin.register(UploadImage)
@@ -20,12 +21,49 @@ class UploadImageAdmin(admin.ModelAdmin):
 
 @admin.register(Process)
 class ProcessAdmin(admin.ModelAdmin):
-	list_display = ('name',)
+	list_display = ('name', 'queue')
+
+
+@admin.register(TypeWork)
+class TypeWorkAdmin(admin.ModelAdmin):
+	list_display = ('name', 'display_processes')
+	search_fields = ('name',)
+
+	def display_processes(self, obj):
+		return ", ".join([process.name for process in obj.process.all()])
+
+	display_processes.short_description = 'Процессы'
 
 
 @admin.register(BoxModel)
 class BoxModelAdmin(admin.ModelAdmin):
-	list_display = ('name', 'material', 'box_size', 'box_type')
+	list_display = (
+		'name', 'material', 'box_size', 'box_type', 'photos', 'closure_type', 'additional_properties', 'max_load',
+		'color', 'grams_per_box', 'comment', 'created_by', 'updated_by', 'created_time')
+	search_fields = ('name',)
+	list_filter = ('box_type',)
+
+	fieldsets = (
+		(None, {
+			'fields': (
+				'name', 'material', 'box_size', 'box_type', 'photos', 'closure_type', 'additional_properties',
+				'max_load', 'grams_per_box',
+				'color', 'comment')
+		}),
+		('Audit Information', {
+			'fields': ('created_by', 'updated_by', 'created_time'),
+			'classes': ('collapse',)  # Collapsed by default
+		}),
+	)
+
+	readonly_fields = ('created_by', 'updated_by', 'created_time')
+
+	def save_model(self, request, obj, form, change):
+		if not obj.pk:  # New object
+			obj.created_by = request.user
+		else:  # Existing object
+			obj.updated_by = request.user
+		super().save_model(request, obj, form, change)
 
 
 @admin.register(BoxOrder)
@@ -48,7 +86,18 @@ class BoxOrderDetailAdmin(admin.ModelAdmin):
 
 @admin.register(ProductionOrder)
 class ProductionOrderAdmin(admin.ModelAdmin):
-	list_display = ['id', 'shipping_date', 'amount']
+	search_fields = ('code',)
+	list_display = ['code', 'box_order_detail', 'shipping_date', 'amount']
+	inlines = [OutgoingMaterialInline]
 
-# def display_box_order_details(self, obj):
-#         return ", ".join([str(box_order_detail) for box_order_detail in obj.box_order_detail.all()])
+
+def display_box_order_details(self, obj):
+	return ", ".join([str(box_order_detail) for box_order_detail in obj.box_order_detail.all()])
+
+
+@admin.register(ProcessLog)
+class ProcessLogAdmin(admin.ModelAdmin):
+	list_display = ['production_order', 'process', 'timestamp']
+	search_fields = ['production_order__code', 'process__name']
+	list_filter = ['process', 'timestamp']
+	ordering = ['-timestamp']

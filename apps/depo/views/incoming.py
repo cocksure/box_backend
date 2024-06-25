@@ -27,8 +27,8 @@ class IncomingCreateView(generics.CreateAPIView):
         warehouse_id = incoming_data.get('warehouse')
         warehouse = get_object_or_404(Warehouse, id=warehouse_id)
 
-        # if not request.user.is_authenticated or not warehouse.managers.filter(id=request.user.id).exists():
-        #     raise PermissionDenied("У вас нет разрешения на выполнение операции прихода в этом складе.")
+        if not request.user.is_authenticated or not warehouse.managers.filter(id=request.user.id).exists():
+            raise PermissionDenied("У вас нет разрешения на выполнение операции прихода в этом складе.")
 
         incoming_data['created_by'] = request.user.id if request.user.is_authenticated else None
         incoming_data['data'] = timezone.now().date()

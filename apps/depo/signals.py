@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models.signals import post_delete, pre_save, post_save
 from django.dispatch import receiver
 from django.db.models import F
@@ -5,6 +7,7 @@ from .models import outgoing
 from .models.incoming import IncomingMaterial
 from .models.outgoing import OutgoingMaterial
 from .models.stock import Stock
+from ..info.models import Warehouse
 
 
 @receiver(post_save, sender=IncomingMaterial)
@@ -19,11 +22,12 @@ def update_stock_on_incoming(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=outgoing.Outgoing)
 def set_outgoing_status(sender, instance, **kwargs):
-	if not hasattr(instance, '_skip_signal'):
-		if instance.outgoing_type == 'перемешения':
-			instance.status = 'В ожидании'
-		else:
-			instance.status = 'Принят'
+	if not hasattr(instance, '_skip_signal'):  # Проверяем, был ли сигнал вызван программно
+		if instance.pk is None or instance.status == 'В ожидании':  # Устанавливаем статус при создании или если статус уже "В ожидании"
+			if instance.outgoing_type == 'перемешения':
+				instance.status = 'В ожидании'
+			else:
+				instance.status = 'Принят'
 
 
 # -----------------------------------INCOMING start--------------------------------------------------------------------
@@ -47,4 +51,20 @@ def update_stock_after_OutgoingMaterial_deletion(sender, instance, **kwargs):
 	if warehouse:
 		Stock.objects.filter(material=material, warehouse=warehouse).update(amount=F('amount') + instance.amount)
 
+
 # -----------------------------------OUTGOING finish--------------------------------------------------------------------
+
+
+@receiver(pre_save, sender=OutgoingMaterial)
+def check_stock(sender, instance, **kwargs):
+	if instance.outgoing.warehouse.use_negative == False:
+		stock = Stock.objects.filter(material=instance.material, warehouse=instance.outgoing.warehouse).first()
+		if stock is None or stock.amount < float(instance.amount):
+			# Определяем доступное количество материала на складе
+			available_amount = 0 if stock is None else stock.amount
+
+			# Формируем сообщение об ошибке с информацией о доступном количестве материала
+			error_message = f"Недостаточно материала на складе. Доступно: {available_amount} {instance.material.unit_of_measurement}"
+
+			# Поднимаем исключение ValidationError с сообщением об ошибке
+			raise ValidationError(error_message)

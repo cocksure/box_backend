@@ -1,0 +1,196 @@
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Рабочий лист: ID {{ order.id }}</title>
+    <style>
+        body {
+            width: 100%;
+            margin: 0;
+            padding: 10px;
+            background-color: #fff;
+            position: relative;
+        }
+
+        @page {
+            margin: 1mm;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .qr-code {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100px; /* уменьшенный размер QR-кода */
+        }
+
+        .model-photo {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px; /* размер изображения модели */
+        }
+
+        .details h4 {
+            margin: 5px 0;
+        }
+
+        .process-table, .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .process-table th, .process-table td, .details-table th, .details-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .process-table th, .details-table th {
+            background-color: #f2f2f2;
+        }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>ID {{ order.id }}</h1>
+        <h3>{{ box_model.name }}</h3>
+        <img src="data:image/png;base64,{{ qr_code_data|b64encode }}" alt="QR-код" class="qr-code">
+        <img src="{{ photo_url }}" alt="Изображение коробки" class="model-photo">
+
+    </div>
+    <hr>
+
+    <!-- Информация о BoxOrder -->
+    <div class="details">
+        <table class="details-table">
+            <tr>
+                <th style="width: 51%">Дата</th>
+                <td>{{ box_order.data }}</td>
+            </tr>
+            <tr>
+                <th>Клиент</th>
+                <td>{{ box_order.customer }}</td>
+            </tr>
+            <tr>
+                <th>Статус</th>
+                <td>{{ box_order.status }}</td>
+            </tr>
+            <tr>
+                <th>Тип заказа</th>
+                <td>{{ box_order.type_order }}</td>
+            </tr>
+            <tr>
+                <th>Спецификация</th>
+                <td>{{ box_order.specification }}</td>
+            </tr>
+            <tr>
+                <th>Менеджер</th>
+                <td>{{ box_order.manager }}</td>
+            </tr>
+            <tr>
+                <th>Дата производства</th>
+                <td>{{ box_order.date_of_production }}</td>
+            </tr>
+        </table>
+    </div>
+
+
+    <!-- Информация о BoxModel -->
+    <div class="details">
+        <table class="details-table">
+            <tr>
+                <th>Материал</th>
+                <td>{{ box_model.material }}</td>
+            </tr>
+            <tr>
+                <th>Количество</th>
+                <td>{{ order_details.amount }}</td>
+            </tr>
+            <tr>
+                <th>Размер коробки</th>
+                <td>{{ box_model.box_size }}</td>
+            </tr>
+            <tr>
+                <th>Тип коробки</th>
+                <td>{{ box_model.box_type }}</td>
+            </tr>
+            <tr>
+                <th>Тип замыкания</th>
+                <td>{{ box_model.get_closure_type_display }}</td>
+            </tr>
+            <tr>
+                <th>Дополнительные свойства</th>
+                <td>{{ box_model.get_additional_properties_display }}</td>
+            </tr>
+            <tr>
+                <th>Максимальная нагрузка</th>
+                <td>{{ box_model.max_load }}</td>
+            </tr>
+            <tr>
+                <th>Грамм на одну коробку</th>
+                <td>{{ box_model.grams_per_box }}</td>
+            </tr>
+            <tr>
+                <th>Цвет</th>
+                <td>{{ box_model.color }}</td>
+            </tr>
+            <tr>
+                <th>Грамм на одну коробку</th>
+                <td>{{ box_model.grams_per_box }}</td>
+            </tr>
+            <tr>
+                <th>Комментарий</th>
+                <td>{{ box_model.comment }}</td>
+            </tr>
+
+        </table>
+    </div>
+
+    <!-- Таблица процессов производства -->
+    <div class="details">
+        <table class="process-table">
+            <thead>
+            <tr>
+                {% for process in processes %}
+                    <th style="font-size: small; font-weight: normal">{{ process.name }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for production_order in production_orders %}
+                <tr>
+                    {% for process in processes %}
+                        <td>
+                            {% if order_process_status|get_item:production_order.id|get_item:process.id %}
+                                ✅
+                            {% else %}
+                                ❌
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
+
+

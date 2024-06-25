@@ -14,10 +14,19 @@ class OutgoingListOnlySerializer(ModelSerializer):
 		fields = '__all__'
 
 
-class IncomingListOnlySerializer(ModelSerializer):
+class IncomingListOnlySerializer(serializers.ModelSerializer):
+	created_by_name = serializers.SerializerMethodField()
+
 	class Meta:
 		model = Incoming
-		fields = '__all__'
+		fields = (
+			'id', 'data', 'outgoing', 'from_warehouse', 'warehouse', 'incoming_type', 'invoice', 'contract_number',
+			'note',
+			'created_by', 'created_by_name', 'updated_by', 'created_time', 'updated_time'
+		)
+
+	def get_created_by_name(self, obj):
+		return obj.created_by.username if obj.created_by else None
 
 
 # -----------------------------------------------------------------
