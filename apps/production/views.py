@@ -19,6 +19,10 @@ from ..depo.models.outgoing import Outgoing, OutgoingMaterial
 from ..depo.models.stock import Stock
 from ..info.models import Warehouse, Material, MaterialType
 from ..shared.utils import CustomPagination, generate_qr_code
+from django.template.loader import render_to_string
+from weasyprint import HTML
+
+from ..shared.views import BaseListView
 
 
 class BoxModelListCreate(generics.ListCreateAPIView):
@@ -273,10 +277,50 @@ class PackagingView(APIView):
 			return Response({'error': 'Некорректный запрос.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ---------------------------------------------PDF views start----------------------------------------------------------
+class ProductionOrderListAPIView(BaseListView):
+	queryset = ProductionOrder.objects.all().order_by('-created_time')
+	serializer_class = ProductionOrderSerializer
+	filterset_fields = ['status', ]
+	search_fields = ['code']
+	ordering_fields = ['created_time', 'status']
 
-from django.template.loader import render_to_string
-from weasyprint import HTML
+	def get_serializer_context(self):
+		context = super().get_serializer_context()
+		context['request'] = self.request
+		return context
+
+
+class ProcessLogListAPIView(BaseListView):
+	queryset = ProcessLog.objects.select_related('production_order', 'process').order_by('-timestamp')
+	serializer_class = ProcessLogSerializer
+	search_fields = ['production_order__code', 'process__name']
+	ordering_fields = ['timestamp', 'production_order__status', 'process__name']
+
+	def get_queryset(self):
+		queryset = super().get_queryset()
+		process = self.request.query_params.get('process', None)
+		status = self.request.query_params.get('status', 'all')
+		start_date = self.request.query_params.get('start_date', None)
+		end_date = self.request.query_params.get('end_date', None)
+
+		if process:
+			queryset = queryset.filter(process_id=process)
+		if status and status != "all":
+			queryset = queryset.filter(production_order__status=status)
+		if start_date:
+			queryset = queryset.filter(timestamp__gte=start_date)
+		if end_date:
+			queryset = queryset.filter(timestamp__lte=end_date)
+
+		return queryset
+
+	def get_serializer_context(self):
+		context = super().get_serializer_context()
+		context['request'] = self.request
+		return context
+
+
+# ---------------------------------------------PDF views start----------------------------------------------------------
 
 
 class GenerateBoxOrderPDFView(APIView):

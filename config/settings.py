@@ -33,7 +33,6 @@ INSTALLED_APPS = [
 	'allauth.socialaccount',
 	'corsheaders',
 	'dj_rest_auth.registration',
-	'bootstrap5',
 
 	# local apps
 	'apps.users',
@@ -72,6 +71,15 @@ REST_FRAMEWORK = {
 	'DEFAULT_PAGINATION_CLASS': 'apps.shared.utils.CustomPagination',
 	'PAGE_SIZE': 20,
 
+	'DEFAULT_THROTTLE_CLASSES': [
+		'rest_framework.throttling.UserRateThrottle',
+		'rest_framework.throttling.AnonRateThrottle',
+	],
+
+	'DEFAULT_THROTTLE_RATES': {
+		'user': '3/s',
+		'anon': '1/s',
+	}
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
